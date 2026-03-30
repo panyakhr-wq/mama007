@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html class="light" lang="th">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Your Cart - perfume.studio.kk</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Plus+Jakarta+Sans:wght@200;300;400;500&family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: { 
+                extend: { 
+                    fontFamily: { 
+                        'elegant': ['Cinzel', 'serif'],
+                        'sans': ['"Plus Jakarta Sans"', 'Manrope', 'sans-serif'],
+                        'serif': ['"Noto Serif"', 'serif'],
+                    },
+                    boxShadow: { 'soft': '0 15px 30px -10px rgba(0,0,0,0.04)' }
+                } 
+            }
+        }
+    </script>
+    <style>
+        .nav-modern { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+
+<body class="bg-background text-slate-800 font-sans font-light">
+
+    <nav class="fixed top-0 w-full z-50 nav-modern"> 
+        <div class="max-w-7xl mx-auto px-10 h-16 flex items-center justify-between">
+            <div class="flex flex-col">
+                <span class="font-elegant text-sm tracking-[0.3em] font-bold text-slate-800">PERFUME.STUDIO.KK</span>
+            </div>
+            <div class="hidden md:flex gap-10 font-elegant text-[10px] tracking-widest text-gray-400 uppercase items-center">
+                <a href="index.html" class="hover:text-primary transition">home</a>
+                <a href="tet_3.html" class="hover:text-primary transition">Gallery</a>
+                <a href="cart.html" class="material-symbols-outlined text-primary transition text-[20px]">shopping_bag</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-32 pb-20 px-6 max-w-5xl mx-auto min-h-screen">
+        <header class="mb-12">
+            <h1 class="font-elegant text-3xl tracking-tight">Shopping Bag</h1>
+            <p class="text-[10px] uppercase tracking-[0.3em] text-slate-400 mt-2">Review your selected rituals</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 mb-24">
+            <div class="lg:col-span-8 space-y-6" id="cart-items-container"></div>
+            <aside class="lg:col-span-4">
+                <div class="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 sticky top-32">
+                    <h3 class="font-elegant text-lg mb-6">Summary</h3>
+                    <div class="space-y-4 mb-8">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Subtotal</span>
+                            <span id="subtotal-price">THB 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-400">Shipping</span>
+                            <span class="text-green-600 font-medium">Complimentary</span>
+                        </div>
+                        <div class="border-t border-slate-50 pt-4 flex justify-between items-baseline">
+                            <span class="text-xs font-bold uppercase tracking-widest">Total</span>
+                            <span id="total-price" class="text-2xl font-elegant text-primary">THB 0.00</span>
+                        </div>
+                    </div>
+                    <button onclick="proceedToCheckout()" class="w-full py-4 bg-[#1a1c1c] text-white rounded-xl text-[10px] uppercase tracking-[0.3em] font-bold hover:bg-primary transition-all shadow-lg">
+                        Checkout Now
+                    </button>
+                </div>
+            </aside>
+        </div>
+
+        <section class="mt-20 border-t border-slate-200 pt-20">
+            <header class="mb-10">
+                <h2 class="font-elegant text-2xl tracking-tight">Order Status</h2>
+                <p class="text-[10px] uppercase tracking-[0.3em] text-slate-400 mt-2">Track your rituals in progress</p>
+            </header>
+            <div id="order-status-container" class="space-y-6">
+                <p class="text-slate-400 text-xs italic">Loading order history...</p>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCnrh9ml3WzDM52Fe8cOMxXQ_cNR_e1OzA",
+            authDomain: "perfume-studio-kk-17495.firebaseapp.com",
+            projectId: "perfume-studio-kk-17495",
+            appId: "1:1088243416074:web:761a87067af6259fadb3f3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.loadCart = function() {
+            const container = document.getElementById('cart-items-container');
+            const cart = JSON.parse(localStorage.getItem('perfume_cart')) || [];
+            
+            if (cart.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 bg-white rounded-[40px] border border-dashed border-slate-200"><p class="text-slate-400 text-sm mb-6">Your bag is currently empty.</p></div>`;
+                updatePrices(0);
+            } else {
+                container.innerHTML = cart.map((item, index) => `
+                    <div class="bg-white p-6 rounded-[32px] flex flex-col md:flex-row gap-6 items-center border border-slate-50 shadow-sm relative">
+                        <button onclick="removeItem(${index})" class="absolute top-6 right-6 text-slate-300 hover:text-red-400 transition"><span class="material-symbols-outlined text-[20px]">close</span></button>
+                        <div class="w-24 h-24 bg-slate-50 rounded-2xl p-2 flex-shrink-0"><img src="${item.image}" class="w-full h-full object-contain mix-blend-multiply"></div>
+                        <div class="flex-grow text-center md:text-left">
+                            <h4 class="font-elegant text-base text-slate-800">${item.scent}</h4>
+                            <p class="text-[9px] text-slate-400 uppercase tracking-widest">${item.size} / ${item.color}</p>
+                        </div>
+                        <div class="flex items-center gap-4 border border-slate-100 rounded-full px-4 py-2">
+                            <button onclick="updateQty(${index}, -1)">-</button><span class="text-sm font-bold">${item.qty}</span><button onclick="updateQty(${index}, 1)">+</button>
+                        </div>
+                        <p class="font-elegant text-primary min-w-[100px] text-right">THB ${(item.price * item.qty).toLocaleString()}</p>
+                    </div>
+                `).join('');
+                const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                updatePrices(total);
+            }
+        }
+
+        async function loadOrderHistory() {
+            const orderContainer = document.getElementById('order-status-container');
+            try {
+                const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(5));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    orderContainer.innerHTML = `<p class="text-slate-400 text-sm italic">No recent orders found.</p>`;
+                    return;
+                }
+                let html = '';
+                querySnapshot.forEach((doc) => {
+                    const order = doc.data();
+                    const date = order.createdAt?.toDate().toLocaleDateString('th-TH') || 'Recently';
+                    let statusColor = "bg-yellow-100 text-yellow-600";
+                    if(order.status === "Verified") statusColor = "bg-green-100 text-green-600";
+                    html += `
+                        <div class="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm">
+                            <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-50">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Order: ${doc.id.slice(0,8)}</p>
+                                <span class="px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${statusColor}">${order.status || 'Pending'}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-600">Total: THB ${order.totalAmount.toLocaleString()}</div>
+                        </div>
+                    `;
+                });
+                orderContainer.innerHTML = html;
+            } catch (err) { orderContainer.innerHTML = ''; }
+        }
+
+        window.onload = () => { loadCart(); loadOrderHistory(); };
+
+        window.updateQty = function(index, change) {
+            let cart = JSON.parse(localStorage.getItem('perfume_cart'));
+            cart[index].qty += change;
+            if(cart[index].qty < 1) cart[index].qty = 1;
+            localStorage.setItem('perfume_cart', JSON.stringify(cart));
+            loadCart();
+        }
+
+        window.removeItem = function(index) {
+            if(confirm('Remove this item?')) {
+                let cart = JSON.parse(localStorage.getItem('perfume_cart'));
+                cart.splice(index, 1);
+                localStorage.setItem('perfume_cart', JSON.stringify(cart));
+                loadCart();
+            }
+        }
+
+        function updatePrices(total) {
+            document.getElementById('subtotal-price').innerText = `THB ${total.toLocaleString()}.00`;
+            document.getElementById('total-price').innerText = `THB ${total.toLocaleString()}.00`;
+        }
+
+        window.proceedToCheckout = function() {
+            const cart = JSON.parse(localStorage.getItem('perfume_cart')) || [];
+            if(cart.length === 0) return alert("Empty bag.");
+            window.location.href = "tet_5.html";
+        }
+    </script>
+</body>
+</html>
